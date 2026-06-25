@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 4
+names: ['Glass', 'Metal', 'Plastic', 'Trash']
+
+roboflow:
+  workspace: abdelaadimkhriss
+  project: ocean-plastics-waste-detection-float-plastics
+  version: 13
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/abdelaadimkhriss/ocean-plastics-waste-detection-float-plastics/dataset/13

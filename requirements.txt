@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────────
+# AquaWatch AI — Plastic Pollution Monitor
+# Requirements File
+# ─────────────────────────────────────────────────────────────
+
+# ── AI / Computer Vision ──────────────────
+ultralytics>=8.0.0          # YOLOv8 training + inference
+opencv-python-headless>=4.8 # Video processing (headless for RPi)
+# opencv-python>=4.8        # Use this on desktop with display
+
+# ── Data & Utilities ─────────────────────
+numpy>=1.24
+Pillow>=10.0
+PyYAML>=6.0
+
+# ── Backend / API ─────────────────────────
+flask>=3.0
+flask-cors>=4.0
+
+# ── Dataset Download ──────────────────────
+roboflow>=1.1
+
+# ── Raspberry Pi / GPS ───────────────────
+# Uncomment these when deploying on Raspberry Pi:
+# picamera2>=0.3             # Pi Camera Module
+# gpsd-py3>=0.3              # GPS via GPSD daemon
+# RPi.GPIO>=0.7              # GPIO control (optional)
+
+# ── Mapping ────────────────────────────────
+# For offline heatmap generation (optional):
+# folium>=0.15
+# geopandas>=0.14
+
+# ─────────────────────────────────────────────────────────────
+# INSTALL:
+#   pip install -r requirements.txt
+#
+# FOR RASPBERRY PI (no GPU):
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements.txt
+#
+# OPTIONAL — Export to ONNX for faster RPi inference:
+#   pip install onnxruntime
+# ─────────────────────────────────────────────────────────────

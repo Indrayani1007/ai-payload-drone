@@ -1,0 +1,9 @@
+*.zip
+*.pt
+__pycache__/
+*.pyc
+venv/*.zip
+*.pt
+__pycache__/
+*.pyc
+venv/

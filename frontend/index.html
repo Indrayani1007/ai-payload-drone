@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AquaWatch AI — Plastic Pollution Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #080d14;
+  --surface: #0e1621;
+  --surface2: #141e2d;
+  --surface3: #1a2538;
+  --border: #1f2f45;
+  --border2: #253548;
+  --text: #e4edf8;
+  --text-muted: #6b8099;
+  --text-dim: #3d5166;
+  --accent: #00d4aa;
+  --accent-dim: rgba(0,212,170,0.12);
+  --accent2: #0099ff;
+  --warn: #ff8c00;
+  --danger: #ff3b3b;
+  --clean: #00d4aa;
+  --low: #80e0ff;
+  --medium: #ff9d3d;
+  --high: #ff5252;
+  --critical: #d400ff;
+  --font: 'Space Grotesk', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── Header ─────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #00d4aa, #0099ff);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.logo-text {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.logo-text span { color: var(--accent); }
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  background: rgba(0,212,170,0.1);
+  border: 1px solid rgba(0,212,170,0.25);
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.5s ease infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.7); }
+}
+
+.time-display {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ─── Layout ─────────────────────── */
+.app {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  grid-template-rows: auto 1fr;
+  height: calc(100vh - 65px);
+}
+
+/* ─── Stats Bar ──────────────────── */
+.stats-bar {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.stat-card {
+  background: var(--surface);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  font-family: var(--mono);
+  color: var(--text);
+  line-height: 1;
+}
+
+.stat-value.accent { color: var(--accent); }
+.stat-value.warn { color: var(--warn); }
+.stat-value.danger { color: var(--danger); }
+
+.stat-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ─── Sidebar ────────────────────── */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-section {
+  border-bottom: 1px solid var(--border);
+  padding: 18px 20px;
+}
+
+.section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* GPS Panel */
+.gps-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.gps-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+.gps-item-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.gps-item-value {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+/* Live pollution level */
+.pollution-indicator {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 10px;
+}
+
+.pollution-level-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.pollution-level-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.pollution-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 100px;
+  letter-spacing: 0.5px;
+}
+
+.badge-Clean    { background: rgba(0,212,170,0.15); color: var(--clean); }
+.badge-Low      { background: rgba(128,224,255,0.15); color: var(--low); }
+.badge-Medium   { background: rgba(255,157,61,0.15); color: var(--medium); }
+.badge-High     { background: rgba(255,82,82,0.15); color: var(--high); }
+.badge-Critical { background: rgba(212,0,255,0.15); color: var(--critical); }
+
+.pollution-bar-track {
+  height: 6px;
+  background: var(--surface3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.pollution-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease, background 0.5s ease;
+}
+
+/* Detection list */
+.detection-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.detection-list::-webkit-scrollbar { width: 4px; }
+.detection-list::-webkit-scrollbar-track { background: transparent; }
+.detection-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.detection-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.detection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.detection-item-content { flex: 1; min-width: 0; }
+
+.detection-item-name {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detection-item-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+
+.detection-conf {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--mono);
+  color: var(--accent);
+}
+
+/* ─── Main Content ───────────────── */
+.main {
+  display: grid;
+  grid-template-rows: 1fr 260px;
+  overflow: hidden;
+}
+
+/* Map */
+.map-container {
+  position: relative;
+  background: var(--surface2);
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+}
+
+.map-overlay {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 1000;
+  display: flex;
+  gap: 8px;
+  flex-direction: column;
+}
+
+.map-badge {
+  background: rgba(8,13,20,0.9);
+  border: 1px solid var(--border2);
+  backdrop-filter: blur(8px);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.drone-trail-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.map-legend {
+  position: absolute;
+  bottom: 24px;
+  right: 14px;
+  z-index: 1000;
+  background: rgba(8,13,20,0.92);
+  border: 1px solid var(--border2);
+  backdrop-filter: blur(8px);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.legend-title {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* ─── Bottom Charts ──────────────── */
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 200px;
+  gap: 1px;
+  background: var(--border);
+  border-top: 1px solid var(--border);
+}
+
+.chart-panel {
+  background: var(--surface);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chart-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.chart-wrapper {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+/* Class breakdown */
+.class-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.class-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.class-bar-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  width: 100px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.class-bar-track {
+  flex: 1;
+  height: 5px;
+  background: var(--surface3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.class-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+
+.class-bar-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  width: 28px;
+  text-align: right;
+}
+
+/* Alert panel */
+.alerts-panel {
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.alert-item {
+  display: flex;
+  gap: 10px;
+  padding: 8px 12px;
+  border-left: 3px solid;
+  background: var(--surface2);
+  border-radius: 0 6px 6px 0;
+  margin: 0 20px 0 0;
+}
+
+.alert-item.high   { border-color: var(--high); }
+.alert-item.medium { border-color: var(--medium); }
+.alert-item.critical { border-color: var(--critical); }
+
+.alert-text { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+.alert-text strong { color: var(--text); font-weight: 600; }
+.alert-time { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 2px; }
+
+/* Leaflet custom styles */
+.leaflet-tile-pane { filter: brightness(0.7) saturate(0.8) hue-rotate(185deg); }
+
+.drone-marker-icon {
+  background: transparent;
+  border: none;
+}
+
+.pollution-popup .leaflet-popup-content-wrapper {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.pollution-popup .leaflet-popup-tip {
+  background: var(--surface2);
+}
+
+/* ─── Responsive ─────────────────── */
+@media (max-width: 1100px) {
+  .app { grid-template-columns: 260px 1fr; }
+  .stats-bar { grid-template-columns: repeat(3, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🛸</div>
+    <div>
+      <div class="logo-text">Aqua<span>Watch</span> AI</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:1px;">Plastic Pollution Monitoring System</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-pill">
+      <div class="pulse"></div>
+      <span id="connectionStatus">Connecting...</span>
+    </div>
+    <div class="time-display" id="clockDisplay">--:--:--</div>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- Stats Bar -->
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-label">Total Detections</div>
+      <div class="stat-value accent" id="statTotal">0</div>
+      <div class="stat-sub">items detected</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Hotspot Zones</div>
+      <div class="stat-value warn" id="statHotspots">0</div>
+      <div class="stat-sub">critical areas</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Area Mapped</div>
+      <div class="stat-value" id="statCells">0</div>
+      <div class="stat-sub">grid cells</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Frames Processed</div>
+      <div class="stat-value" id="statFrames">0</div>
+      <div class="stat-sub">total frames</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Max Level Seen</div>
+      <div class="stat-value" id="statMaxLevel" style="font-size:16px;margin-top:4px;">—</div>
+      <div class="stat-sub">pollution level</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Session Duration</div>
+      <div class="stat-value" id="statDuration" style="font-size:16px;margin-top:4px;">0m</div>
+      <div class="stat-sub">since start</div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <!-- GPS Info -->
+    <div class="sidebar-section">
+      <div class="section-title">🛰️ Drone GPS</div>
+      <div class="gps-grid">
+        <div class="gps-item">
+          <div class="gps-item-label">Latitude</div>
+          <div class="gps-item-value" id="gpsLat">—</div>
+        </div>
+        <div class="gps-item">
+          <div class="gps-item-label">Longitude</div>
+          <div class="gps-item-value" id="gpsLon">—</div>
+        </div>
+        <div class="gps-item">
+          <div class="gps-item-label">Altitude</div>
+          <div class="gps-item-value" id="gpsAlt">— m</div>
+        </div>
+        <div class="gps-item">
+          <div class="gps-item-label">GPS Fix</div>
+          <div class="gps-item-value" id="gpsFix" style="color:var(--accent)">Acquiring</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Pollution Level -->
+    <div class="sidebar-section">
+      <div class="section-title">⚠️ Live Status</div>
+      <div class="pollution-indicator">
+        <div class="pollution-level-row">
+          <span class="pollution-level-label">Pollution Level</span>
+          <span class="pollution-badge badge-Clean" id="pollutionBadge">CLEAN</span>
+        </div>
+        <div class="pollution-bar-track">
+          <div class="pollution-bar-fill" id="pollutionBar" style="width:0%;background:var(--clean)"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:11px;color:var(--text-muted)">
+          <span>Items: <b id="liveCount" style="color:var(--text)">0</b></span>
+          <span>Coverage: <b id="liveCoverage" style="color:var(--text)">0 m²</b></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Detections -->
+    <div class="sidebar-section" style="flex:1;display:flex;flex-direction:column;overflow:hidden;border-bottom:none">
+      <div class="section-title">📍 Detection Feed</div>
+      <div class="detection-list" id="detectionFeed">
+        <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">
+          Waiting for drone data...
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Main Panel -->
+  <div class="main">
+
+    <!-- Map -->
+    <div class="map-container">
+      <div id="map"></div>
+
+      <div class="map-overlay">
+        <div class="map-badge">
+          <div class="drone-trail-dot"></div>
+          <span id="mapDronePos">Drone: acquiring position...</span>
+        </div>
+        <div class="map-badge" id="mapZoneInfo" style="display:none">
+          📊 <span id="mapZoneText">—</span>
+        </div>
+      </div>
+
+      <div class="map-legend">
+        <div class="legend-title">Pollution Density</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--clean)"></div>Clean</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--low)"></div>Low</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--medium)"></div>Medium</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--high)"></div>High</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--critical)"></div>Critical</div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="charts-row">
+
+      <!-- Detection Timeline -->
+      <div class="chart-panel">
+        <div class="chart-title">📈 Detection Timeline</div>
+        <div class="chart-wrapper">
+          <canvas id="timelineChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Class Breakdown -->
+      <div class="chart-panel">
+        <div class="chart-title">🗂️ Waste Type Breakdown</div>
+        <div class="class-breakdown" id="classBreakdown">
+          <div style="color:var(--text-muted);font-size:12px">Waiting for data...</div>
+        </div>
+      </div>
+
+      <!-- Alerts -->
+      <div class="chart-panel" style="padding-right:0">
+        <div class="chart-title" style="padding-right:20px">🔔 Alerts</div>
+        <div class="alerts-panel" id="alertsPanel">
+          <div style="padding:20px;color:var(--text-muted);font-size:12px">No alerts yet</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Config ─────────────────────────────────────────────────────
+const API = 'http://localhost:5000/api';
+const REFRESH_MS = 2000;
+
+const LEVEL_COLORS = {
+  Clean: '#00d4aa',
+  Low: '#80e0ff',
+  Medium: '#ff9d3d',
+  High: '#ff5252',
+  Critical: '#d400ff'
+};
+
+const CLASS_COLORS_MAP = {
+  plastic_bottle: '#ff5252',
+  plastic_bag: '#ff9d3d',
+  plastic_packaging: '#ffe44d',
+  foam: '#4db8ff',
+  other_plastic: '#cf80ff'
+};
+
+// ─── State ──────────────────────────────────────────────────────
+let map, droneMarker, dronePolyline, droneTrail = [];
+let timelineChart;
+let timelineData = { labels: [], counts: [] };
+let mapCircles = {};
+let alerts = [];
+let lastDetectionIds = new Set();
+let sessionStart = Date.now();
+
+// ─── Clock ──────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clockDisplay').textContent =
+    now.toLocaleTimeString('en-GB', { hour12: false });
+  const elapsed = Math.floor((Date.now() - sessionStart) / 60000);
+  document.getElementById('statDuration').textContent = elapsed < 60
+    ? `${elapsed}m` : `${Math.floor(elapsed/60)}h ${elapsed%60}m`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── Map Setup ──────────────────────────────────────────────────
+function initMap() {
+  map = L.map('map', {
+    center: [19.1990, 73.1930],
+    zoom: 15,
+    zoomControl: true,
+  });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19
+  }).addTo(map);
+
+  // Custom drone icon
+  const droneIcon = L.divIcon({
+    className: 'drone-marker-icon',
+    html: `<div style="
+      width:32px;height:32px;
+      background:linear-gradient(135deg,#00d4aa,#0099ff);
+      border-radius:50%;
+      border:3px solid white;
+      display:flex;align-items:center;justify-content:center;
+      font-size:14px;
+      box-shadow:0 0 15px rgba(0,212,170,0.6);
+    ">🛸</div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16]
+  });
+
+  droneMarker = L.marker([19.1990, 73.1930], { icon: droneIcon }).addTo(map);
+  dronePolyline = L.polyline([], { color: '#00d4aa', weight: 2, opacity: 0.6, dashArray: '5,5' }).addTo(map);
+}
+
+// ─── Timeline Chart ─────────────────────────────────────────────
+function initChart() {
+  const ctx = document.getElementById('timelineChart').getContext('2d');
+  timelineChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Detections/frame',
+        data: [],
+        borderColor: '#00d4aa',
+        backgroundColor: 'rgba(0,212,170,0.08)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 2,
+        pointBackgroundColor: '#00d4aa',
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 200 },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#6b8099', font: { size: 9, family: 'JetBrains Mono' }, maxTicksLimit: 8 }
+        },
+        y: {
+          min: 0,
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#6b8099', font: { size: 9 }, stepSize: 2 }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0e1621',
+          borderColor: '#1f2f45',
+          borderWidth: 1,
+          titleColor: '#e4edf8',
+          bodyColor: '#6b8099',
+          titleFont: { family: 'JetBrains Mono', size: 11 }
+        }
+      }
+    }
+  });
+}
+
+// ─── Data Fetchers ───────────────────────────────────────────────
+async function fetchLive() {
+  try {
+    const res = await fetch(`${API}/live`);
+    if (!res.ok) return;
+    const json = await res.json();
+    if (json.status !== 'ok') return;
+
+    const d = json.data;
+    const gps = d.gps || {};
+    const pollution = d.pollution || {};
+    const detections = d.detections || [];
+
+    // Update GPS panel
+    if (gps.lat) {
+      document.getElementById('gpsLat').textContent = gps.lat.toFixed(6);
+      document.getElementById('gpsLon').textContent = gps.lon.toFixed(6);
+      document.getElementById('gpsAlt').textContent = `${gps.alt} m`;
+      document.getElementById('gpsFix').textContent = gps.fix ? '3D Fix ✓' : 'No Fix';
+      document.getElementById('mapDronePos').textContent =
+        `Drone: ${gps.lat.toFixed(5)}, ${gps.lon.toFixed(5)}`;
+
+      // Move drone marker
+      const latlng = [gps.lat, gps.lon];
+      droneMarker.setLatLng(latlng);
+      droneTrail.push(latlng);
+      if (droneTrail.length > 200) droneTrail.shift();
+      dronePolyline.setLatLngs(droneTrail);
+    }
+
+    // Update pollution panel
+    const level = pollution.density_level || 'Clean';
+    const score = Math.min(100, Math.max(0, pollution.density_score || 0));
+    const badge = document.getElementById('pollutionBadge');
+    badge.textContent = level.toUpperCase();
+    badge.className = `pollution-badge badge-${level}`;
+    document.getElementById('pollutionBar').style.width = `${score}%`;
+    document.getElementById('pollutionBar').style.background = LEVEL_COLORS[level] || '#00d4aa';
+    document.getElementById('liveCount').textContent = pollution.count || 0;
+    document.getElementById('liveCoverage').textContent = `${pollution.coverage_m2 || 0} m²`;
+
+    // Update detection feed
+    if (detections.length > 0) {
+      updateDetectionFeed(detections, gps, d.timestamp);
+    }
+
+    // Timeline
+    const timeLabel = new Date(d.timestamp).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    timelineData.labels.push(timeLabel);
+    timelineData.counts.push(detections.length);
+    if (timelineData.labels.length > 40) {
+      timelineData.labels.shift();
+      timelineData.counts.shift();
+    }
+    timelineChart.data.labels = timelineData.labels;
+    timelineChart.data.datasets[0].data = timelineData.counts;
+    timelineChart.update();
+
+    // Alerts for high pollution
+    if (['High', 'Critical'].includes(level)) {
+      addAlert(level.toLowerCase(), `${level} pollution detected at (${gps.lat?.toFixed(5)}, ${gps.lon?.toFixed(5)}) — ${detections.length} items found`);
+    }
+
+    // Connection status
+    document.getElementById('connectionStatus').textContent = 'Live Feed Active';
+
+  } catch (e) {
+    document.getElementById('connectionStatus').textContent = 'Waiting for drone...';
+  }
+}
+
+async function fetchStats() {
+  try {
+    const res = await fetch(`${API}/stats`);
+    if (!res.ok) return;
+    const s = await res.json();
+
+    document.getElementById('statTotal').textContent = s.total_detections?.toLocaleString() || '0';
+    document.getElementById('statHotspots').textContent = s.hotspots || '0';
+    document.getElementById('statCells').textContent = s.map_cells || '0';
+    document.getElementById('statFrames').textContent = s.total_frames?.toLocaleString() || '0';
+
+    const maxLevel = s.max_pollution_level || '—';
+    const maxEl = document.getElementById('statMaxLevel');
+    maxEl.textContent = maxLevel;
+    maxEl.style.color = LEVEL_COLORS[maxLevel] || 'var(--text)';
+
+    // Class breakdown
+    updateClassBreakdown(s.class_breakdown || {});
+
+  } catch (e) {}
+}
+
+async function fetchHeatmap() {
+  try {
+    const res = await fetch(`${API}/heatmap`);
+    if (!res.ok) return;
+    const json = await res.json();
+    updateMapCircles(json.cells || []);
+  } catch (e) {}
+}
+
+// ─── Map Circle Updates ──────────────────────────────────────────
+function updateMapCircles(cells) {
+  cells.forEach(cell => {
+    const key = `${cell.lat},${cell.lon}`;
+    const color = LEVEL_COLORS[cell.density_level] || '#00d4aa';
+    const radius = Math.max(15, Math.min(60, cell.total_detections * 3));
+    const opacity = cell.density_level === 'Clean' ? 0.15 : 0.5;
+
+    if (mapCircles[key]) {
+      mapCircles[key].setStyle({ color, fillColor: color, fillOpacity: opacity, radius });
+    } else {
+      const circle = L.circle([cell.lat, cell.lon], {
+        color,
+        fillColor: color,
+        fillOpacity: opacity,
+        weight: 1,
+        radius,
+        className: 'pollution-circle'
+      }).addTo(map);
+
+      circle.bindPopup(`
+        <div style="font-family:'Space Grotesk',sans-serif;min-width:180px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:8px;color:${color}">
+            ${cell.density_level} Pollution Zone
+          </div>
+          <div style="font-size:11px;color:#888;line-height:2">
+            📍 ${cell.lat.toFixed(5)}, ${cell.lon.toFixed(5)}<br>
+            📦 ${cell.total_detections} items detected<br>
+            🔍 ${cell.frames} frames analyzed<br>
+            🕐 ${new Date(cell.last_seen).toLocaleTimeString()}
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:#aaa">
+            ${Object.entries(cell.class_counts || {}).map(([k,v]) =>
+              `${k.replace(/_/g,' ')}: ${v}`).join(' · ')}
+          </div>
+        </div>
+      `, { className: 'pollution-popup' });
+
+      mapCircles[key] = circle;
+    }
+  });
+}
+
+// ─── Detection Feed ──────────────────────────────────────────────
+let feedItems = [];
+function updateDetectionFeed(detections, gps, timestamp) {
+  const feed = document.getElementById('detectionFeed');
+  const time = new Date(timestamp).toLocaleTimeString('en-GB', { hour12: false });
+
+  // Only add new items
+  detections.slice(0, 5).forEach(d => {
+    const color = CLASS_COLORS_MAP[d.class] || '#00d4aa';
+    const item = document.createElement('div');
+    item.className = 'detection-item';
+    item.innerHTML = `
+      <div class="detection-dot" style="background:${color}"></div>
+      <div class="detection-item-content">
+        <div class="detection-item-name">${d.class.replace(/_/g, ' ')}</div>
+        <div class="detection-item-meta">${gps.lat?.toFixed(5)}, ${gps.lon?.toFixed(5)} · ${time}</div>
+      </div>
+      <div class="detection-conf">${(d.confidence * 100).toFixed(0)}%</div>
+    `;
+    feed.insertBefore(item, feed.firstChild);
+    feedItems.push(item);
+    if (feedItems.length > 80) {
+      const old = feedItems.shift();
+      old.remove();
+    }
+  });
+
+  // Remove placeholder
+  const placeholder = feed.querySelector('div[style*="Waiting"]');
+  if (placeholder) placeholder.remove();
+}
+
+// ─── Class Breakdown ─────────────────────────────────────────────
+function updateClassBreakdown(classCounts) {
+  const container = document.getElementById('classBreakdown');
+  const entries = Object.entries(classCounts).sort((a, b) => b[1] - a[1]);
+  if (!entries.length) return;
+
+  const max = entries[0][1];
+  container.innerHTML = entries.map(([cls, count]) => {
+    const color = CLASS_COLORS_MAP[cls] || '#00d4aa';
+    const pct = max > 0 ? (count / max) * 100 : 0;
+    return `
+      <div class="class-bar-row">
+        <div class="class-bar-label" title="${cls.replace(/_/g,' ')}">${cls.replace(/_/g,' ')}</div>
+        <div class="class-bar-track">
+          <div class="class-bar-fill" style="width:${pct}%;background:${color}"></div>
+        </div>
+        <div class="class-bar-count">${count}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ─── Alerts ──────────────────────────────────────────────────────
+function addAlert(type, message) {
+  if (alerts.length > 0 && alerts[0].message === message) return; // dedupe
+
+  alerts.unshift({ type, message, time: new Date().toLocaleTimeString('en-GB', { hour12: false }) });
+  if (alerts.length > 10) alerts.pop();
+
+  const panel = document.getElementById('alertsPanel');
+  const placeholder = panel.querySelector('[style*="No alerts"]');
+  if (placeholder) placeholder.remove();
+
+  const el = document.createElement('div');
+  el.className = `alert-item ${type}`;
+  el.innerHTML = `
+    <div>
+      <div class="alert-text"><strong>${type.charAt(0).toUpperCase() + type.slice(1)} Pollution</strong> — ${message}</div>
+      <div class="alert-time">${alerts[0].time}</div>
+    </div>
+  `;
+  panel.insertBefore(el, panel.firstChild);
+  if (panel.children.length > 8) panel.lastChild.remove();
+}
+
+// ─── Polling Loop ────────────────────────────────────────────────
+async function poll() {
+  await Promise.all([fetchLive(), fetchStats(), fetchHeatmap()]);
+}
+
+// ─── Init ────────────────────────────────────────────────────────
+initMap();
+initChart();
+poll();
+setInterval(poll, REFRESH_MS);
+</script>
+</body>
+</html>

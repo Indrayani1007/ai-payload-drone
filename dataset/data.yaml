@@ -1,0 +1,15 @@
+names:
+- Glass
+- Metal
+- Plastic
+- Trash
+nc: 4
+roboflow:
+  license: CC BY 4.0
+  project: ocean-plastics-waste-detection-float-plastics
+  url: https://universe.roboflow.com/abdelaadimkhriss/ocean-plastics-waste-detection-float-plastics/dataset/13
+  version: 13
+  workspace: abdelaadimkhriss
+test: C:\Users\Indrayani\OneDrive\Desktop\plastic-pollution-monitor\dataset/test/images
+train: C:\Users\Indrayani\OneDrive\Desktop\plastic-pollution-monitor\dataset/train/images
+val: C:\Users\Indrayani\OneDrive\Desktop\plastic-pollution-monitor\dataset/valid/images
