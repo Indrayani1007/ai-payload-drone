@@ -7,3 +7,9 @@ venv/*.zip
 __pycache__/
 *.pyc
 venv/
+dataset/
+*.zip
+*.pt
+__pycache__/
+*.pyc
+venv/
